@@ -15,13 +15,19 @@ Focus on:
 - Performance optimizations
 - Idiomatic Go style and naming
 - Potential security risks
-- Make sure code does not exceed 120 characters per line
-- config values should not be accessed anywhere other than main.go
-- no unused constants should be in code
-Give actionable feedback in bullet points. Be concise and technical.
+
+IMPORTANT: For each specific issue you find, mention the line number using this format:
+"Line X: [Your feedback about this specific line]"
+
+If an issue spans multiple lines, use:
+"Lines X-Y: [Your feedback about these lines]"
+
+Give actionable feedback. Be concise and technical.
+
 Go code:
 ```go
 {code}
+```
 """)
 
 # Step 4: Create the review chain
