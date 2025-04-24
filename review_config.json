@@ -1,0 +1,22 @@
+{
+	"max_files": 10,
+	"review_mode": "comment",
+	"review_event": "COMMENT",
+	"severity_threshold": "info",
+	"ignore_patterns": [
+		"vendor/",
+		"*/generated/*.go"
+	],
+	"custom_rules": [
+		{
+			"name": "line_length",
+			"description": "Lines should not exceed 120 characters",
+			"enabled": true
+		},
+		{
+			"name": "error_handling",
+			"description": "Check for proper error handling",
+			"enabled": true
+		}
+	]
+}

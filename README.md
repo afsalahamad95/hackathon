@@ -5,12 +5,12 @@ This tool uses LLM to automatically review Go code in GitHub pull requests. It l
 ## Features
 
 - **LLM-powered code review** using Llama3.2
-- **Automated linting** with multiple Go linters:
-  - golint - for style issues
-  - go vet - for potential bugs
-  - staticcheck - for advanced static analysis
+- **Inline comments** - places feedback directly on specific lines of code
+- **Automated linting** with multiple Go linters
 - **GitHub PR integration** - comments directly on PRs
 - **GitHub Actions support** - automate reviews on every PR
+- **Configurable review modes** - comment, request changes, or approve
+- **Error resilience** - retries and fallbacks for API failures
 
 ## Setup
 
@@ -24,83 +24,63 @@ This tool uses LLM to automatically review Go code in GitHub pull requests. It l
    ```
    ollama pull llama3.2
    ```
-5. For linting functionality, ensure Go is installed:
+5. Configure your GitHub token:
    ```
-   # Install Go (if not already installed)
-   # For MacOS with Homebrew
-   brew install go
-   
-   # For Ubuntu/Debian
-   sudo apt-get install golang-go
+   # Create .env file with your GitHub token
+   echo "GITHUB_TOKEN=your_personal_access_token" > .env
    ```
 
 ## Usage
 
-### Review Go code directly
-
-```python
-from reviewer import review_go_code
-
-# Example Go code
-code = """
-package main
-
-import "fmt"
-
-func main() {
-    fmt.Println("Hello, World!")
-}
-"""
-
-# Get review feedback
-review = review_go_code(code)
-print(review)
-```
-
-### Lint Go code directly
-
-```python
-from linter import GoLinter
-
-# Initialize linter
-linter = GoLinter()
-
-# Example Go code
-code = """
-package main
-
-import "fmt"
-
-func main() {
-    fmt.Println("Hello, World!")
-}
-"""
-
-# Get linting results
-lint_results = linter.lint_go_code(code)
-print(lint_results)
-```
-
-### Review Go code in GitHub PRs
+### Basic Usage
 
 ```bash
-# Set your GitHub token
-export GITHUB_TOKEN=your_github_token
-
-# Run the PR reviewer with all features
+# Review a PR with default settings
 python github_pr_reviewer.py --repo owner/repo --pr 123
 
-# Skip linting if Go is not installed
-python github_pr_reviewer.py --repo owner/repo --pr 123 --skip-lint
-
-# Use only LLM review, no linting
-python github_pr_reviewer.py --repo owner/repo --pr 123 --llm-only
+# Review with verbose output
+python github_pr_reviewer.py --repo owner/repo --pr 123 --verbose
 ```
 
-You can also provide the token via the command line:
+### Advanced Usage
+
 ```bash
-python github_pr_reviewer.py --repo owner/repo --pr 123 --token your_github_token
+# Limit the number of files to review
+python github_pr_reviewer.py --repo owner/repo --pr 123 --max-files 5
+
+# Request changes instead of just commenting
+python github_pr_reviewer.py --repo owner/repo --pr 123 --mode request_changes
+
+# Use custom config file
+python github_pr_reviewer.py --repo owner/repo --pr 123 --config my_config.json
 ```
+
+## Configuration
+
+You can customize the reviewer behavior using a JSON configuration file:
+
+```json
+{
+    "max_files": 10,
+    "review_mode": "comment",
+    "review_event": "COMMENT",
+    "severity_threshold": "info",
+    "ignore_patterns": [
+        "vendor/",
+        "*/generated/*.go"
+    ]
+}
+```
+
+Configuration options:
+
+| Option | Description | Values |
+|--------|-------------|--------|
+| max_files | Maximum number of files to review | Number or null |
+| review_mode | Review mode | "comment", "request_changes", "approve" |
+| review_event | GitHub API event | "COMMENT", "REQUEST_CHANGES", "APPROVE" |
+| severity_threshold | Minimum severity level to report | "info", "warning", "error" |
+| ignore_patterns | Patterns of files to ignore | Array of glob patterns |
 
 ## GitHub Action Integration
 
@@ -147,6 +127,29 @@ jobs:
           python github_pr_reviewer.py --repo ${{ github.repository }} --pr ${{ github.event.pull_request.number }}
 ```
 
-## Configuration
+## Review a Specific File
 
-You can customize the review prompt in `reviewer.py` to focus on specific aspects of Go code that are important for your project. 
+You can also review individual Go files directly:
+
+```python
+from reviewer import review_go_code
+
+# Example Go code
+code = """
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}
+"""
+
+# Get review feedback
+review = review_go_code(code)
+print(review)
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. 
