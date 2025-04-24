@@ -5,11 +5,10 @@ import (
 	"net/http"
 )
 
-const unnused = 10
-
 func helloHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	fmt.Fprintf(w, "Hello %s!", name)
+	fmt.Println("so this ifdjfdfdkfjkdfkdfkdfjvnjajejfkndkfkljferjierjtrgkso this ifdjfdfdkfjkdfkdfkdfjvnjajejfkndkfkljferjierjtrgk")
 }
 func main() {
 	http.HandleFunc("/hello", helloHandler)

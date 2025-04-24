@@ -15,6 +15,9 @@ Focus on:
 - Performance optimizations
 - Idiomatic Go style and naming
 - Potential security risks
+- Make sure code does not exceed 120 characters per line
+- config values should not be accessed anywhere other than main.go
+- no unused constants should be in code
 Give actionable feedback in bullet points. Be concise and technical.
 Go code:
 ```go
