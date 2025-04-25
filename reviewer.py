@@ -23,13 +23,16 @@ If an issue spans multiple lines, use:
 "Lines X-Y: [Your feedback about these lines]"
 
 CRITICAL: For each issue you identify, provide a code suggestion that can be directly committed by the user.
-Format your suggestions like this:
-"Line X: [Issue description]
-Suggested fix:
-```go
-// Your improved code here
-```"
+Format your suggestions exactly like this:
 
+Format:
+- "Line X:" or "Lines X-Y:" followed by issue description.
+- Then use this format to give improved code:
+  ```suggestion
+  // your suggested code
+  ```
+
+Make sure your suggested code can completely replace the problematic code. Don't include language markers in the code block.
 Give actionable feedback. Be concise and technical.
 
 Go code:

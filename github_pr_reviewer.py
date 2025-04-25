@@ -193,11 +193,15 @@ def extract_code_suggestion(comment_text):
         return None
         
     # Look for code blocks after "Suggested fix:" or similar phrases
-    suggestion_pattern = r'(?:Suggested fix:|Suggested code:|Fix:|Code suggestion:)\s*```go\s*(.*?)```'
+    suggestion_pattern = r'(?:Suggested fix:|Suggested code:|Fix:|Code suggestion:)\s*```(?:go)?\s*(.*?)```'
     match = re.search(suggestion_pattern, comment_text, re.DOTALL)
     
     if match:
-        return match.group(1).strip()
+        code = match.group(1).strip()
+        # Remove any "go" language specifier that might have been captured
+        if code.startswith("go\n"):
+            code = code[3:].strip()
+        return code
     return None
 
 def post_inline_review_comments(repo_name, pr_number, file_comments, github_token, review_mode="comment", review_event="COMMENT"):
@@ -232,13 +236,18 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
                 diff_position = line_map[comment['start_line']]
                 
                 # Format comment body with code suggestion if available
-                comment_body = f"Line {comment['start_line']}: {comment['body']}"
+                comment_body = ""
                 
                 # If there's a code suggestion, format it as a GitHub suggestion block
                 if comment.get('has_suggestion') and comment.get('suggestion'):
                     # Extract the feedback part (before the suggestion)
                     feedback_part = re.sub(r'Suggested fix:.*', '', comment['body'], flags=re.DOTALL).strip()
+                    
+                    # Format using GitHub's suggestion syntax
+                    # This is the exact format GitHub uses for suggestions that can be committed directly
                     comment_body = f"Line {comment['start_line']}: {feedback_part}\n\n```suggestion\n{comment['suggestion']}\n```"
+                else:
+                    comment_body = f"Line {comment['start_line']}: {comment['body']}"
                 
                 # Add to comments for the review
                 comments_for_review.append({
