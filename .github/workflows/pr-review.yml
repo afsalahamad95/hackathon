@@ -28,4 +28,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python github_pr_reviewer.py ${{ github.repository }} ${{ github.event.pull_request.number }} --repo afsalahamad95/test-go --pr 3 
+          python github_pr_reviewer.py --repo ${{ github.repository }} --pr ${{ github.event.pull_request.number }} --token ${{ secrets.GITHUB_TOKEN }} 
