@@ -32,6 +32,15 @@ Format:
   // your suggested code
   ```
 
+Rules:
+- For each issue you find, output a GitHub suggestion block.
+- Use this format:
+[github_suggestion]
+File: path/to/file.go
+Line: <line number>
+```suggestion
+// your code suggestion
+
 Make sure your suggested code can completely replace the problematic code. Don't include language markers in the code block.
 Give actionable feedback. Be concise and technical.
 
