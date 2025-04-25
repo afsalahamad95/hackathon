@@ -28,7 +28,7 @@ For each issue:
 2. Provide a brief explanation of the problem, following the structure given in the image.  Include spelling/grammar issues.
 3. Follow immediately with a GitHub suggestion block like this:
 ```suggestion
-Your improved code here
+Replacement code here
 ```
 
 Example format:
@@ -40,7 +40,7 @@ mutex.Unlock()
 ```
 
 The ```suggestion 
-Your improved code here
+Replacement code here
 
 Go code:
 ```go
