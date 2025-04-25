@@ -13,6 +13,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up --auth-key=${{ secrets.TAILSCALE_AUTH_KEY }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

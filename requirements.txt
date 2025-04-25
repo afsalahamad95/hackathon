@@ -1,6 +1,5 @@
-langchain-ollama
 langchain
 pygithub
 python-dotenv
-PyGithub
 flask
+langchain-openai
