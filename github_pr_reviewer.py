@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 import argparse
@@ -11,7 +12,10 @@ import dotenv
 
 dotenv.load_dotenv()
 
+# Constants
 MAX_RETRIES = 3
+RETRY_DELAY = 2  # seconds
+MAX_DIFF_SIZE = 150  # maximum number of lines in a diff
 
 def get_go_files_from_pr(repo_name, pr_number, github_token, max_files=None):
     """Get all Go files modified in a PR with proper diff information."""
@@ -22,12 +26,19 @@ def get_go_files_from_pr(repo_name, pr_number, github_token, max_files=None):
     go_files = {}
     file_count = 0
     
+    # Get list of files modified in PR
     for file in pr.get_files():
         if file.filename.endswith('.go'):
             if file.status in ['added', 'modified']:
                 if max_files and file_count >= max_files:
                     print(f"Reached maximum file limit ({max_files}), skipping remaining files")
                     break
+                
+                # Check diff size
+                diff_lines = len(file.patch.split('\n')) if file.patch else 0
+                if diff_lines > MAX_DIFF_SIZE:
+                    print(f"Warning: Diff for {file.filename} exceeds {MAX_DIFF_SIZE} lines ({diff_lines} lines). Skipping review.")
+                    continue
                 
                 try:
                     file_content = repo.get_contents(file.filename, ref=pr.head.ref).decoded_content.decode('utf-8')
@@ -68,6 +79,7 @@ def parse_diff_for_line_mapping(diff):
                 source_line = int(match.group(1)) - 1
             continue
         
+        # Track actual file lines (skip removed lines)
         if not line.startswith('-'):
             source_line += 1
             line_map[source_line] = position
@@ -85,6 +97,7 @@ def parse_review_for_inline_comments(review_text):
     """
     comments = []
     
+    # Look for patterns like "Line X:" or "Lines X-Y:" followed by text and possibly a suggestion
     line_patterns = [
         r'(?:Line|line)\s+(\d+)\s*:\s*((?:(?!Line|line|\n```suggestion).)+(?:```suggestion(?:.*?)```)?)',
         r'(?:Lines|lines)\s+(\d+)-(\d+)\s*:\s*((?:(?!Line|line|\n```suggestion).)+(?:```suggestion(?:.*?)```)?)'
@@ -98,9 +111,11 @@ def parse_review_for_inline_comments(review_text):
                 end_line = int(match.group(2))
                 comment_text = match.group(3).strip()
                 
+                # Extract code suggestion if present
                 suggestion = extract_code_suggestion(comment_text)
                 
                 if comment_text:
+                    # If suggestion is present, clean the comment text
                     clean_comment = re.sub(r'```suggestion.*?```', '', comment_text, flags=re.DOTALL).strip()
                     
                     comments.append({
@@ -133,6 +148,7 @@ def parse_review_for_inline_comments(review_text):
         suggestion_blocks = re.finditer(r'```suggestion\s+(.*?)```', review_text, re.DOTALL)
         for i, block in enumerate(suggestion_blocks):
             comments.append({
+                'start_line': None,  
                 'end_line': None,
                 'body': f"Suggestion {i+1}",
                 'has_suggestion': True,
@@ -196,7 +212,6 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
         for comment in file_comments_list:
             if comment['start_line'] is not None and comment['start_line'] in line_map:
                 diff_position = line_map[comment['start_line']]
-                
                 if comment.get('has_suggestion') and comment.get('suggestion'):
                     comment_body = f"{comment['body']}\n\n```suggestion\n{comment['suggestion']}\n```"
                 else:
@@ -215,6 +230,7 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
                     line_info = ""
                 general_comments.append(f"**{filename} {line_info}:** {comment['body']}")
     
+    review_body = "# 🤖 Go Code Review Bot\n\n"
     
     if inline_comments_count > 0:
         review_body += f"Found {inline_comments_count} issues to comment on.\n\n"
@@ -226,6 +242,7 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
     else:
         review_body += "📝 **Code review completed.** See inline comments for details.\n\n"
     
+    # Create the review with all the inline comments
     if comments_for_review:
         for attempt in range(MAX_RETRIES):
             try:
@@ -234,6 +251,7 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
                     event=review_event,
                     comments=comments_for_review
                 )
+                print(f"Added {len(comments_for_review)} inline comments to PR #{pr_number}")
                 break
             except GithubException as e:
                 if attempt < MAX_RETRIES - 1:
@@ -241,13 +259,16 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
                     time.sleep(RETRY_DELAY)
                 else:
                     print(f"Failed to create review after {MAX_RETRIES} attempts: {str(e)}")
+                    # If the batched review fails, try adding comments one by one
                     add_individual_comments(pr, comments_for_review, general_comments)
             except Exception as e:
                 print(f"Unexpected error creating review: {str(e)}")
+                # If the batched review fails, try adding comments one by one
                 add_individual_comments(pr, comments_for_review, general_comments)
                 break
     
     if general_comments:
+        general_comment = "# 🤖 Go Code Review Bot - Additional Comments\n\n"
         if inline_comments_count > 0:
             general_comment += f"Added {inline_comments_count} inline comments.\n\n"
         general_comment += "\n\n".join(general_comments)
@@ -258,6 +279,7 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
             print(f"Error posting general comments: {str(e)}")
     elif inline_comments_count == 0:
         try:
+            pr.create_issue_comment("# 🤖 Go Code Review Bot\n\nReviewed the code but found no specific issues to comment on.")
         except Exception as e:
             print(f"Error posting 'no issues' comment: {str(e)}")
 
@@ -267,6 +289,7 @@ def add_individual_comments(pr, comments_for_review, general_comments):
     
     commit_id = None
     try:
+        # Get the latest commit ID
         commit_id = pr.get_commits().reversed[0].sha
     except Exception as e:
         print(f"Error getting latest commit: {str(e)}")
@@ -292,6 +315,9 @@ def load_config(config_file):
     """Load configuration from file."""
     default_config = {
         "max_files": None,
+        "review_mode": "comment",  # comment, request_changes, approve
+        "review_event": "COMMENT",  # COMMENT, REQUEST_CHANGES, APPROVE
+        "severity_threshold": "info"  # info, warning, error
     }
     
     if not os.path.exists(config_file):
@@ -341,6 +367,7 @@ def main():
         print("No Go files found in this PR.")
         return
     
+    print(f"Found {len(go_files)} Go files to review in PR #{args.pr}")
     
     for filename, file_info in go_files.items():
         print(f"Reviewing {filename}...")

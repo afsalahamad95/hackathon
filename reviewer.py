@@ -15,14 +15,18 @@ Focus on:
 - Performance optimizations
 - Idiomatic Go style and naming
 - Potential security risks
-
+- Dead code and bugs
+- Industry standards ensuring long term compliance and maintainability
+- Logging and error handling
+- Unit test coverage
+- Sensitive information and secrets exposure
+- Function headers and comments for readability
+- Spelling and grammar
 IMPORTANT: First identify issues by line number, then provide a code suggestion that GitHub users can commit directly.
-
 For each issue:
-1. Identify the issue using line numbers
-2. Provide a brief explanation
+1. Identify the issue using line numbers.
+2. Provide a brief explanation of the problem, following the structure given in the image.  Include spelling/grammar issues.
 3. Follow immediately with a GitHub suggestion block like this:
-
 ```suggestion
 Your improved code here
 ```
@@ -35,8 +39,8 @@ sharedVar += 1
 mutex.Unlock()
 ```
 
-The ```suggestion syntax is exactly what GitHub uses to enable direct commits from the review.
-Do not add any other formatting, just use ```suggestion followed by the replacement code.
+The ```suggestion 
+Your improved code here
 
 Go code:
 ```go
