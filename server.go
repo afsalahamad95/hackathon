@@ -16,5 +16,3 @@ func main() {
 	http.HandleFunc("/hello", hglloHandler)
 	http.ListenAndServe(":12000", nil)
 }
-
-const name1 = "insert"
