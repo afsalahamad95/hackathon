@@ -5,8 +5,6 @@ import (
 	"net/http"
 )
 
-const name = "hello"
-
 // this function prints hello world
 func hglloHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
