@@ -5,11 +5,12 @@ import (
 	"net/http"
 )
 
-func helloHandler(w http.ResponseWriter, r *http.Request) {
+// this function prints hello world
+func hglloHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
-	fmt.Fprintf(w, "Hello im printing the name that has been fetched from the url query paramenter %s!", name)
+	fmt.Println(name)
 }
 func main() {
-	http.HandleFunc("/hello", helloHandler)
+	http.HandleFunc("/hello", hglloHandler)
 	http.ListenAndServe(":12000", nil)
 }
