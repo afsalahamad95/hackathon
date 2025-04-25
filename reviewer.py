@@ -16,33 +16,27 @@ Focus on:
 - Idiomatic Go style and naming
 - Potential security risks
 
-IMPORTANT: For each specific issue you find, mention the line number using this format:
-"Line X: [Your feedback about this specific line]"
+IMPORTANT: First identify issues by line number, then provide a code suggestion that GitHub users can commit directly.
 
-If an issue spans multiple lines, use:
-"Lines X-Y: [Your feedback about these lines]"
+For each issue:
+1. Identify the issue using line numbers
+2. Provide a brief explanation
+3. Follow immediately with a GitHub suggestion block like this:
 
-CRITICAL: For each issue you identify, provide a code suggestion that can be directly committed by the user.
-Format your suggestions exactly like this:
-
-Format:
-- "Line X:" or "Lines X-Y:" followed by issue description.
-- Then use this format to give improved code:
-  ```suggestion
-  // your suggested code
-  ```
-
-Rules:
-- For each issue you find, output a GitHub suggestion block.
-- Use this format:
-[github_suggestion]
-File: path/to/file.go
-Line: <line number>
 ```suggestion
-// your code suggestion
+Your improved code here
+```
 
-Make sure your suggested code can completely replace the problematic code. Don't include language markers in the code block.
-Give actionable feedback. Be concise and technical.
+Example format:
+Line 42: This code has a race condition because it accesses a shared variable without locks.
+```suggestion
+mutex.Lock()
+sharedVar += 1
+mutex.Unlock()
+```
+
+The ```suggestion syntax is exactly what GitHub uses to enable direct commits from the review.
+Do not add any other formatting, just use ```suggestion followed by the replacement code.
 
 Go code:
 ```go

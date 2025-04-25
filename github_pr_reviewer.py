@@ -92,19 +92,16 @@ def parse_review_for_inline_comments(review_text):
     
     Format expected: 
     - Line X: Comment about this line
-    - Lines X-Y: Comment about these lines
-    - Line X: Comment about this line
-      Suggested fix:
-      ```go
+      ```suggestion
       // Suggested code
       ```
     """
     comments = []
     
-    # Look for patterns like "Line X:" or "Lines X-Y:"
+    # Look for patterns like "Line X:" or "Lines X-Y:" followed by text and possibly a suggestion
     line_patterns = [
-        r'(?:Line|line)\s+(\d+)\s*:\s*(.*?)(?=(?:Line|line)|$)',
-        r'(?:Lines|lines)\s+(\d+)-(\d+)\s*:\s*(.*?)(?=(?:Line|line)|$)'
+        r'(?:Line|line)\s+(\d+)\s*:\s*((?:(?!Line|line|\n```suggestion).)+(?:```suggestion(?:.*?)```)?)',
+        r'(?:Lines|lines)\s+(\d+)-(\d+)\s*:\s*((?:(?!Line|line|\n```suggestion).)+(?:```suggestion(?:.*?)```)?)'
     ]
     
     for pattern in line_patterns:
@@ -120,10 +117,13 @@ def parse_review_for_inline_comments(review_text):
                 suggestion = extract_code_suggestion(comment_text)
                 
                 if comment_text:
+                    # If suggestion is present, clean the comment text
+                    clean_comment = re.sub(r'```suggestion.*?```', '', comment_text, flags=re.DOTALL).strip()
+                    
                     comments.append({
                         'start_line': start_line,
                         'end_line': end_line,
-                        'body': comment_text,
+                        'body': clean_comment,
                         'has_suggestion': suggestion is not None,
                         'suggestion': suggestion
                     })
@@ -138,37 +138,31 @@ def parse_review_for_inline_comments(review_text):
                 suggestion = extract_code_suggestion(comment_text)
                 
                 if comment_text:
+                    # If suggestion is present, clean the comment text
+                    clean_comment = re.sub(r'```suggestion.*?```', '', comment_text, flags=re.DOTALL).strip()
+                    
                     comments.append({
                         'start_line': line_num,
                         'end_line': line_num,
-                        'body': comment_text,
+                        'body': clean_comment,
                         'has_suggestion': suggestion is not None,
                         'suggestion': suggestion
                     })
     
-    # Also look for bullet points that might contain line numbers
-    bullet_pattern = r'[-\*]\s+(.*?)(?=[-\*]|$)'
-    bullet_matches = re.finditer(bullet_pattern, review_text, re.DOTALL)
-    
-    for match in bullet_matches:
-        bullet_text = match.group(1).strip()
-        # Check if the bullet point contains line numbers
-        line_num_match = re.search(r'(?:Line|line)\s+(\d+)', bullet_text)
-        if line_num_match:
-            line_num = int(line_num_match.group(1))
-            
-            # Extract code suggestion if present
-            suggestion = extract_code_suggestion(bullet_text)
-            
+    # If no structured comments found, look for any suggestions in the text
+    if not comments:
+        # Find all suggestion blocks
+        suggestion_blocks = re.finditer(r'```suggestion\s+(.*?)```', review_text, re.DOTALL)
+        for i, block in enumerate(suggestion_blocks):
             comments.append({
-                'start_line': line_num,
-                'end_line': line_num,
-                'body': bullet_text,
-                'has_suggestion': suggestion is not None,
-                'suggestion': suggestion
+                'start_line': None,  # We don't know the line numbers
+                'end_line': None,
+                'body': f"Suggestion {i+1}",
+                'has_suggestion': True,
+                'suggestion': block.group(1).strip()
             })
     
-    # If no structured comments found, use the whole review as a general comment
+    # If still no comments found, use the whole review as a general comment
     if not comments and review_text.strip():
         comments.append({
             'start_line': None,
@@ -184,23 +178,19 @@ def extract_code_suggestion(comment_text):
     """Extract code suggestion from comment text if present.
     
     Format expected:
-    Suggested fix:
-    ```go
+    ```suggestion
     // Suggested code
     ```
     """
     if not comment_text:
         return None
         
-    # Look for code blocks after "Suggested fix:" or similar phrases
-    suggestion_pattern = r'(?:Suggested fix:|Suggested code:|Fix:|Code suggestion:)\s*```(?:go)?\s*(.*?)```'
+    # Look for GitHub suggestion blocks
+    suggestion_pattern = r'```suggestion\s+(.*?)```'
     match = re.search(suggestion_pattern, comment_text, re.DOTALL)
     
     if match:
         code = match.group(1).strip()
-        # Remove any "go" language specifier that might have been captured
-        if code.startswith("go\n"):
-            code = code[3:].strip()
         return code
     return None
 
@@ -236,18 +226,11 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
                 diff_position = line_map[comment['start_line']]
                 
                 # Format comment body with code suggestion if available
-                comment_body = ""
-                
-                # If there's a code suggestion, format it as a GitHub suggestion block
                 if comment.get('has_suggestion') and comment.get('suggestion'):
-                    # Extract the feedback part (before the suggestion)
-                    feedback_part = re.sub(r'Suggested fix:.*', '', comment['body'], flags=re.DOTALL).strip()
-                    
-                    # Format using GitHub's suggestion syntax
-                    # This is the exact format GitHub uses for suggestions that can be committed directly
-                    comment_body = f"Line {comment['start_line']}: {feedback_part}\n\n```suggestion\n{comment['suggestion']}\n```"
+                    # Format using GitHub's suggestion syntax - this is critical for commit suggestions to work
+                    comment_body = f"{comment['body']}\n\n```suggestion\n{comment['suggestion']}\n```"
                 else:
-                    comment_body = f"Line {comment['start_line']}: {comment['body']}"
+                    comment_body = comment['body']
                 
                 # Add to comments for the review
                 comments_for_review.append({
@@ -336,7 +319,7 @@ def add_individual_comments(pr, comments_for_review, general_comments):
     success_count = 0
     for comment in comments_for_review:
         try:
-            # The body already contains the formatted comment with suggestion if applicable
+            # The body should be preserved as is to keep the GitHub suggestion format
             pr.create_review_comment(
                 body=comment['body'],
                 commit_id=commit_id,
