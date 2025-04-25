@@ -93,6 +93,11 @@ def parse_review_for_inline_comments(review_text):
     Format expected: 
     - Line X: Comment about this line
     - Lines X-Y: Comment about these lines
+    - Line X: Comment about this line
+      Suggested fix:
+      ```go
+      // Suggested code
+      ```
     """
     comments = []
     
@@ -110,11 +115,17 @@ def parse_review_for_inline_comments(review_text):
                 start_line = int(match.group(1))
                 end_line = int(match.group(2))
                 comment_text = match.group(3).strip()
+                
+                # Extract code suggestion if present
+                suggestion = extract_code_suggestion(comment_text)
+                
                 if comment_text:
                     comments.append({
                         'start_line': start_line,
                         'end_line': end_line,
-                        'body': comment_text
+                        'body': comment_text,
+                        'has_suggestion': suggestion is not None,
+                        'suggestion': suggestion
                     })
         else:
             # Handle single line
@@ -122,11 +133,17 @@ def parse_review_for_inline_comments(review_text):
             for match in matches:
                 line_num = int(match.group(1))
                 comment_text = match.group(2).strip()
+                
+                # Extract code suggestion if present
+                suggestion = extract_code_suggestion(comment_text)
+                
                 if comment_text:
                     comments.append({
                         'start_line': line_num,
                         'end_line': line_num,
-                        'body': comment_text
+                        'body': comment_text,
+                        'has_suggestion': suggestion is not None,
+                        'suggestion': suggestion
                     })
     
     # Also look for bullet points that might contain line numbers
@@ -139,10 +156,16 @@ def parse_review_for_inline_comments(review_text):
         line_num_match = re.search(r'(?:Line|line)\s+(\d+)', bullet_text)
         if line_num_match:
             line_num = int(line_num_match.group(1))
+            
+            # Extract code suggestion if present
+            suggestion = extract_code_suggestion(bullet_text)
+            
             comments.append({
                 'start_line': line_num,
                 'end_line': line_num,
-                'body': bullet_text
+                'body': bullet_text,
+                'has_suggestion': suggestion is not None,
+                'suggestion': suggestion
             })
     
     # If no structured comments found, use the whole review as a general comment
@@ -150,10 +173,32 @@ def parse_review_for_inline_comments(review_text):
         comments.append({
             'start_line': None,
             'end_line': None,
-            'body': "General feedback: " + review_text.strip()
+            'body': "General feedback: " + review_text.strip(),
+            'has_suggestion': False,
+            'suggestion': None
         })
     
     return comments
+
+def extract_code_suggestion(comment_text):
+    """Extract code suggestion from comment text if present.
+    
+    Format expected:
+    Suggested fix:
+    ```go
+    // Suggested code
+    ```
+    """
+    if not comment_text:
+        return None
+        
+    # Look for code blocks after "Suggested fix:" or similar phrases
+    suggestion_pattern = r'(?:Suggested fix:|Suggested code:|Fix:|Code suggestion:)\s*```go\s*(.*?)```'
+    match = re.search(suggestion_pattern, comment_text, re.DOTALL)
+    
+    if match:
+        return match.group(1).strip()
+    return None
 
 def post_inline_review_comments(repo_name, pr_number, file_comments, github_token, review_mode="comment", review_event="COMMENT"):
     """Post inline review comments to the PR using accurate position information.
@@ -186,11 +231,20 @@ def post_inline_review_comments(repo_name, pr_number, file_comments, github_toke
                 # We have a valid position in the diff
                 diff_position = line_map[comment['start_line']]
                 
+                # Format comment body with code suggestion if available
+                comment_body = f"Line {comment['start_line']}: {comment['body']}"
+                
+                # If there's a code suggestion, format it as a GitHub suggestion block
+                if comment.get('has_suggestion') and comment.get('suggestion'):
+                    # Extract the feedback part (before the suggestion)
+                    feedback_part = re.sub(r'Suggested fix:.*', '', comment['body'], flags=re.DOTALL).strip()
+                    comment_body = f"Line {comment['start_line']}: {feedback_part}\n\n```suggestion\n{comment['suggestion']}\n```"
+                
                 # Add to comments for the review
                 comments_for_review.append({
                     'path': filename,
                     'position': diff_position,
-                    'body': f"Line {comment['start_line']}: {comment['body']}"
+                    'body': comment_body
                 })
                 inline_comments_count += 1
             else:
@@ -273,6 +327,7 @@ def add_individual_comments(pr, comments_for_review, general_comments):
     success_count = 0
     for comment in comments_for_review:
         try:
+            # The body already contains the formatted comment with suggestion if applicable
             pr.create_review_comment(
                 body=comment['body'],
                 commit_id=commit_id,

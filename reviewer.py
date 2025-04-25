@@ -22,6 +22,14 @@ IMPORTANT: For each specific issue you find, mention the line number using this 
 If an issue spans multiple lines, use:
 "Lines X-Y: [Your feedback about these lines]"
 
+CRITICAL: For each issue you identify, provide a code suggestion that can be directly committed by the user.
+Format your suggestions like this:
+"Line X: [Issue description]
+Suggested fix:
+```go
+// Your improved code here
+```"
+
 Give actionable feedback. Be concise and technical.
 
 Go code:

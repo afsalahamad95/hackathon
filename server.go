@@ -7,8 +7,7 @@ import (
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
-	fmt.Fprintf(w, "Hello %s!", name)
-	fmt.Println("so this ifdjfdfdkfjkdfkdfkdfjvnjajejfkndkfkljferjierjtrgkso this ifdjfdfdkfjkdfkdfkdfjvnjajejfkndkfkljferjierjtrgk")
+	fmt.Fprintf(w, "Hello im printing the name that has been fetched from the url query paramenter %s!", name)
 }
 func main() {
 	http.HandleFunc("/hello", helloHandler)
