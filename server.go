@@ -14,5 +14,3 @@ func main() {
 	http.HandleFunc("/hello", hglloHandler)
 	http.ListenAndServe(":12000", nil)
 }
-
-// this function prints hello world
