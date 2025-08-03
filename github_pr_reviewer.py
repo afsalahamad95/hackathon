@@ -74,9 +74,11 @@ def parse_diff_for_line_mapping(diff):
         position += 1
         
         if line.startswith('@@'):
-            match = re.search(r'\+(\d+)', line)
+            # Parse the @@ line to get the starting line numbers
+            # Format: @@ -old_start,old_count +new_start,new_count @@
+            match = re.search(r'@@ -(\d+),?\d*\s+\+(\d+),?\d*', line)
             if match:
-                source_line = int(match.group(1)) - 1
+                source_line = int(match.group(2)) - 1  # Use the new file line number
             continue
         
         # Track actual file lines (skip removed lines)
@@ -287,29 +289,12 @@ def add_individual_comments(pr, comments_for_review, general_comments):
     """Add comments individually when batch commenting fails."""
     print("Trying to add comments individually...")
     
-    commit_id = None
-    try:
-        # Get the latest commit ID
-        commit_id = pr.get_commits().reversed[0].sha
-    except Exception as e:
-        print(f"Error getting latest commit: {str(e)}")
-        return
-    
-    success_count = 0
+    # For now, just add all comments as general comments since the position API is complex
     for comment in comments_for_review:
-        try:
-            pr.create_review_comment(
-                body=comment['body'],
-                commit_id=commit_id,
-                path=comment['path'],
-                position=comment['position']
-            )
-            success_count += 1
-        except Exception as e:
-            print(f"Error adding individual comment: {str(e)}")
-            general_comments.append(f"**{comment['path']}:** {comment['body']}")
+        line_info = f" (Line {comment.get('start_line', 'unknown')})" if comment.get('start_line') else ""
+        general_comments.append(f"**{comment['path']}{line_info}:** {comment['body']}")
     
-    print(f"Added {success_count}/{len(comments_for_review)} comments individually")
+    print(f"Added {len(comments_for_review)} comments as general comments")
 
 def load_config(config_file):
     """Load configuration from file."""
